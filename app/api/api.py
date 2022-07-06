@@ -31,7 +31,7 @@ class EmployeeLogin(Resource):
                 username = request.form.get('username')
                 password = request.form.get('password')
                 user = UserService.check_user_exists(username)
-                is_pwd_correct = UserService.verify_password(user.secrets[0].login_password, password)
+                is_pwd_correct = UserService.verify_password(user.secret, password)
                 LoggingTracingConfig.logger_object.info(f"user: {username} tried to log in")
                 span.set_tag('login-tag', f'user: {username} tried to log in')
                 if not user or is_pwd_correct is False:
@@ -92,10 +92,10 @@ class AddEmployee(Resource):
                     employee_id = EmployeeService.add_employee(first_name, password, last_name, address_list,
                                                                date_of_joining,
                                                                job_role, email, gender, marital_status, blood_group)
-                    LoggingTracingConfig.logger_object.info(f"User created and his employee_id:{employee_id.pid}")
+                    LoggingTracingConfig.logger_object.info(f"User created and his employee_id:{employee_id.id.__str__()}")
                 else:
                     return make_response(f'user already exists with email: {email}', 209)
-                return make_response(jsonify({'employee_id': employee_id.pid, 'username': email, 'password': first_name}),
+                return make_response(jsonify({'employee_id': employee_id.id.__str__(), 'username': email, 'password': first_name}),
                                      200)
             except Exception as e:
                 span.set_tag('add-user-tag')
@@ -110,13 +110,13 @@ class DeleteEmployee(Resource):
     @adminauth
     def delete(self):
         try:
-            id = request.args.get('employee_id')
-            delete_response = EmployeeService.delete_employee(id)
-            LoggingTracingConfig.logger_object.info(f"User: {id} was attempted to delete")
+            username = request.args.get('username')
+            delete_response = EmployeeService.delete_employee(username)
+            LoggingTracingConfig.logger_object.info(f"User: {username} was attempted to delete")
             if not delete_response:
                 return make_response('record not found or already deleted', 404)
-            LoggingTracingConfig.logger_object.info(f"User: {id} was deleted")
-            return make_response(f'User {id} deleted', 204)
+            LoggingTracingConfig.logger_object.info(f"User: {username} was deleted")
+            return make_response(f'User {username} deleted', 204)
         except Exception as e:
             LoggingTracingConfig.logger_object.error(f"Error in deleting user: {e}")
             return make_response(jsonify({'error': e.args[0]}), 500)
@@ -128,13 +128,13 @@ class UpdateEmployee(Resource):
     @userauth
     def put(self):
         try:
-            employee_id = request.json.get('employee_id')
-            employee_ent = Employee.by_id(employee_id)
-            request.json.pop('employee_id')
+            username = request.json.get('username')
+            employee_ent = UserService.check_user_exists(username)
+            request.json.pop('username')
             if not employee_ent:
                 return make_response('record not found or deleted', 404)
             update_response = EmployeeService.update_employee(employee_ent, request.json)
-            LoggingTracingConfig.logger_object.info(f"User: {employee_id} was updated")
+            LoggingTracingConfig.logger_object.info(f"User: {username} was updated")
             return make_response(update_response, 200)
         except Exception as e:
             LoggingTracingConfig.logger_object.error(f"Error in updating user: {e}")

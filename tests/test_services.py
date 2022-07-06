@@ -53,18 +53,13 @@ class TestEmployeeService(unittest.TestCase):
         self.assertIsNotNone(response)
 
     def test_update_employee(self):
-        user_ent = Employee.by_id(employee_id)
+        user_ent = Employee.by_id("627a2ba8008657f1b1865fac")
         response = EmployeeService.update_employee(user_ent, {'gender': 'M'})
         self.assertIsNotNone(response)
 
     def test_delete_employee(self):
         response = EmployeeService.delete_employee(employee_id)
         self.assertIsNotNone(response)
-
-    def test_get_all_employees_limit_offset(self):
-        response = EmployeeService.get_all_employees_limit_offset(1,2)
-        self.assertIsNotNone(response)
-
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ class LoggingTracingConfig:
     tracing_obj = None
 
     @classmethod
-    def logging_tracing_initialize(cls):
+    def logging_tracing_initialize(cls, db):
         logging.basicConfig(filename=DateTimeHelper.now_datetime_to_string(),
                             format="%(asctime)s | %(name)s | %(levelname)s | %(message)s", filemode='w')
         cls.logger_object = logging.getLogger()

@@ -42,12 +42,12 @@ class SwaggerConfig:
 
     @classmethod
     def update_user_input(cls, api):
-        cls.update_user = api.model('Resource2', {'employee_id': fields.Integer})
+        cls.update_user = api.model('Resource2', {'username': fields.String})
 
     @classmethod
     def delete_user_input(cls, api):
         cls.delete_input = api.parser()
-        employee_id = cls.delete_input.add_argument('employee_id', type=int, location='body', help='employee_id',
+        username = cls.delete_input.add_argument('username', type=str, location='body', help='username',
                                                     required=True)
 
     @classmethod

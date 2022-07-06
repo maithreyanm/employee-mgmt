@@ -1,5 +1,5 @@
-from app.models import SQLAConfig as sqla
-from app.models.models import Employee, Address, Person, Secrets
+from app.models import MongoConfig as sqla
+from app.models.models import Employee, Address, Person
 from app import AppFactory
 from library.datetime_helper import DateTimeHelper
 from sqlalchemy import orm
@@ -13,11 +13,11 @@ class UserService:
 
     @classmethod
     def check_user_exists(cls, username):
-        employee = Employee.by_email(username)
-        if len(employee) == 0:
+        employee = Employee.objects(email=username).first()
+        if employee is None:
             return None
         else:
-            return employee[0]
+            return employee
 
     @classmethod
     def verify_password(cls, hashed_password, password):
@@ -30,22 +30,22 @@ class EmployeeService:
     @classmethod
     def build_payload(cls, user_ent):
         address_list = []
-        if len(user_ent.addresses) != 0:
+        if user_ent.addresses is not None:
             for address in user_ent.addresses:
                 addr_dict = {
-                    'address_type': address.address_type,
-                    'address': address.full_address
+                    'address_type': address['address_type'],
+                    'address': address['full_address']
                 }
                 address_list.append(addr_dict)
         else:
             pass
-        person_ent = user_ent.person[0] if len(user_ent.person) else None
+        person_ent = user_ent.person if user_ent.person else None
         employee_dict = {
-            'employee_name': f'{user_ent.first_name} {person_ent.last_name if person_ent else ""}',
+            'employee_name': f'{user_ent.first_name} {person_ent["last_name"] if person_ent else ""}',
             'date_of_joining': user_ent.date_of_joining,
             'is_active': user_ent.is_active,
             'email': user_ent.email,
-            'blood_group': person_ent.blood_group if person_ent else "",
+            'blood_group': person_ent["blood_group"] if person_ent else "",
             'address': address_list
         }
         return employee_dict
@@ -60,44 +60,30 @@ class EmployeeService:
         return payload_list
 
     @classmethod
-    def get_all_employees_limit_offset(cls, limit, offset):
-        query = sqla.session.query(Employee)
-        query = query.options(orm.joinedload('person'))
-        query = query.options(orm.joinedload('addresses'))
-        query = query.limit(limit).offset(offset)
-        query = query.all()
-        return query
-
-    @classmethod
     def add_employee(cls, name, password, lastname, address_list, date_of_joining,
                      job_role, email, gender, marital_status, blood_group):
         try:
-            emp_ent = Employee()
+            new_addr_list = []
             for address in address_list:
                 full_address = address['full_address']
                 address_type = address['address_type']
-                add = Address(full_address=full_address, address_type=address_type)
-                emp_ent.addresses.append(add)
-            pers_ent = Person(last_name=lastname, gender=gender, marital_status=marital_status,
-                              blood_group=blood_group)
-            secr_ent = Secrets(login_password=AppFactory.bcrypt.generate_password_hash(password))
-            emp_ent.is_active = True
-            emp_ent.job_role = job_role
-            emp_ent.date_of_joining = DateTimeHelper.dt_from_string(date_of_joining)
-            emp_ent.first_name = name
-            emp_ent.email = email
-            emp_ent.secrets.append(secr_ent)
-            emp_ent.person.append(pers_ent)
-
-            emp_ent.save_me()
+                address = {'full_address': full_address, 'address_type': address_type}
+                new_addr_list.append(address)
+            pers_ent = {'last_name': lastname, 'gender': gender, marital_status: marital_status,
+                        'blood_group': blood_group}
+            emp_ent = Employee(first_name=name, is_active=True, job_role=job_role,
+                               date_of_joining=DateTimeHelper.dt_from_string(date_of_joining),
+                               email=email, secret=AppFactory.bcrypt.generate_password_hash(password),
+                               addresses=new_addr_list, person=pers_ent)
+            emp_ent.save()
             return emp_ent
 
         except Exception as e:
             raise e
 
     @classmethod
-    def delete_employee(cls, id=None):
-        emp = Employee.by_id(id)
+    def delete_employee(cls, username):
+        emp = Employee.by_username(username)
         if emp:
             emp.delete_me()
             return True
@@ -109,14 +95,15 @@ class EmployeeService:
         try:
             msg = ''
             data_keys_list = data.keys()
-            person_keys_list = Person().__table__.columns.keys()
+            person_keys_list = list(employee_ent.person.keys())
             for data_key in data_keys_list:
                 if data_key in person_keys_list:
-                    # indexing as employee-person has 1-1 relationship so for one employee would be one person record
-                    exec(f"employee_ent.person[0].{data_key}=\'{data[data_key]}\'")
-                    msg = f'Updated {data_key} for employee id: {employee_ent.pid}'
+                    to_be_updated_dict = employee_ent.person
+                    to_be_updated_dict.update(data)
+                    employee_ent.update(person=to_be_updated_dict)
+                    msg = f'Updated {data_key} for employee id: {employee_ent.email}'
                 else:
-                    raise CustomException(f'Error in updating for employee_id: {employee_ent.pid}')
+                    raise CustomException(f'Error in updating for employee_id: {employee_ent.email}')
             employee_ent.save_me()
             return msg
         except Exception as e:

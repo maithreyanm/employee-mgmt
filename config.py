@@ -18,3 +18,9 @@ class Config:
 
     # secrets
     secret_key = os.environ.get(F'{env_prefix}_SECRET_KEY')
+
+    # mongo
+    mongo_db_name = os.environ.get(F'{env_prefix}_MONGO_DB_NAME')
+    mongo_db_pass = os.environ.get(F'{env_prefix}_MONGO_DB_PASS')
+    mongo_db_host = os.environ.get(F'{env_prefix}_MONGO_DB_HOST')
+    mongo_db_user = os.environ.get(F'{env_prefix}_MONGO_DB_USER')
